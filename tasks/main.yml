@@ -1,0 +1,40 @@
+---
+- name: install php & other packages
+  apt:
+    name:
+      - php
+      - php-xml
+      - sqlite3
+      - php-sqlite3
+    state: latest
+
+- name: check if dokuwiki is installed
+  stat: 
+    path: "{{ dokuwiki_docroot }}/doku.php"
+  register: dokustate
+  changed_when: dokustate.stat.exists == False
+
+- name: Install Dokuwiki
+  block:
+    - name: download dokuwiki
+      get_url:
+        url: https://download.dokuwiki.org/out/dokuwiki-24117f7f9e0362c4b1782ff29220b0ab.tgz
+        dest: /tmp/dokuwiki.tgz
+
+    - name: install dokuwiki
+      unarchive:
+        src: /tmp/dokuwiki.tgz
+        dest: /tmp/
+        remote_src: true
+
+    - name: move extracted wiki to webroot
+      ansible.builtin.shell: "mv /tmp/dokuwiki/* {{ dokuwiki_docroot }}"
+  when: dokustate.stat.exists == False
+
+- name: ensure file permissions
+  file:
+    dest: "{{ dokuwiki_docroot }}"
+    owner: "{{ dokuwiki_owner }}"
+    group: "{{ dokuwiki_group }}"
+    mode: u=rwX,g=rX,o=rX
+    recurse: yes
